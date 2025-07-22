@@ -11,7 +11,7 @@ from tensorflow.keras import optimizers
 from core.utils import decode_cfg, load_weights
 from core.dataset import Dataset
 from core.callbacks import COCOEvalCheckpoint, CosineAnnealingScheduler, WarmUpScheduler
-from core.utils.optimizers import Accumulative
+from core.utils.optimizers import Accumulative, GAOptimizer
 import numpy as np
 import plotting
 import matplotlib.pyplot as plt
@@ -20,7 +20,6 @@ from sklearn.metrics import accuracy_score
 import hls4ml
 
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
 
 flags.DEFINE_string('config', '', 'path to config file')
@@ -112,8 +111,8 @@ def main(_argv):
         os.makedirs(ckpt_path)
         os.makedirs(os.path.join(ckpt_path, 'train', 'plugins', 'profile'))
     print('HERE:')
-    #opt = GradientAccumulationOptimizer(optimizers.RMSprop(learning_rate=0.01), 16)
-    opt = optimizers.RMSprop(learning_rate=0.01)
+    opt = GAOptimizer(optimizers.RMSprop(learning_rate=0.01), 16)
+    #opt = optimizers.RMSprop(learning_rate=0.01)
     # warm-up
     for i in range(num):
         model.layers[i].trainable = True
