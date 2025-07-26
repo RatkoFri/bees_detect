@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
-
-
 import os
 import time
 
@@ -11,19 +8,11 @@ from tensorflow.keras import optimizers
 from core.utils import decode_cfg, load_weights
 from core.dataset import Dataset
 from core.callbacks import COCOEvalCheckpoint, CosineAnnealingScheduler, WarmUpScheduler
-from core.utils.optimizers import Accumulative, GAOptimizer, GradientAccumulateOptimizer
-import numpy as np
-import plotting
-import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score
-
-import hls4ml
-
-import tensorflow as tf
-
+from core.utils.optimizers import Accumulative
 
 flags.DEFINE_string('config', '', 'path to config file')
 FLAGS = flags.FLAGS
+
 
 
 def main(_argv):
@@ -39,8 +28,8 @@ def main(_argv):
     elif model_type == 'yolov3_tiny':
         from core.model.one_stage.yolov3 import YOLOv3_Tiny as Model
         from core.model.one_stage.yolov3 import YOLOLoss as Loss
-        num = 1
-        epochs = 1
+        num = 29
+        epochs = 80
     elif model_type == 'yolov4':
         from core.model.one_stage.yolov4 import YOLOv4 as Model
         from core.model.one_stage.yolov4 import YOLOLoss as Loss
@@ -49,8 +38,8 @@ def main(_argv):
     elif model_type == 'yolov4_tiny':
         from core.model.one_stage.yolov4 import YOLOv4_Tiny as Model
         from core.model.one_stage.yolov4 import YOLOLoss as Loss
-        num = 1
-        epochs = 1
+        num = 61
+        epochs = 200
     elif model_type == 'yolox':
         from core.model.one_stage.custom import YOLOX as Model
         from core.model.one_stage.custom import YOLOLoss as Loss
@@ -64,11 +53,9 @@ def main(_argv):
     else:
         raise NotImplementedError()
 
-   
 
-    model, eval_model = Model(cfg, input_size=int(cfg['train']['image_size'][0]))
+    model, eval_model = Model(cfg)
     model.summary()
-    eval_model.summary()
     train_dataset = Dataset(cfg)
 
     init_weight = cfg["train"]["init_weight_path"]
@@ -110,9 +97,9 @@ def main(_argv):
     if not os.path.isdir(ckpt_path):
         os.makedirs(ckpt_path)
         os.makedirs(os.path.join(ckpt_path, 'train', 'plugins', 'profile'))
-    print('HERE:')
-    opt = GradientAccumulateOptimizer(optimizers.RMSprop(learning_rate=0.01), accum_steps=16, reduction="MEAN")
-    #opt = optimizers.RMSprop(learning_rate=0.01)
+
+    #opt = Accumulative(optimizers.legacy.RMSprop(lr=0.01), 16)
+    opt = optimizers.RMSprop(lr=0.01)
     # warm-up
     for i in range(num):
         model.layers[i].trainable = True
@@ -129,50 +116,23 @@ def main(_argv):
               )
 
     model.compile(loss=loss, optimizer=opt, run_eagerly=False)
-    # model.fit(train_dataset,
-    #           steps_per_epoch=epoch_steps,
-    #           epochs=epochs // 5 * 2,
-    #           callbacks=eval_callback + lr_callback
-    #           )
+    model.fit(train_dataset,
+              steps_per_epoch=epoch_steps,
+              epochs=epochs // 5 * 2,
+              callbacks=eval_callback + lr_callback
+              )
 
     for i in range(len(model.layers)): model.layers[i].trainable = True
     print('Unfreeze all layers.')
 
     # reset sample rate
     model.compile(loss=loss, optimizer=opt, run_eagerly=False)
-    # model.fit(train_dataset,
-    #           steps_per_epoch=epoch_steps,
-    #           epochs=epochs // 5 * 3,
-    #           callbacks=eval_callback + lr_callback
-    #           )
-
-    # Save the model weights
-    model.save(os.path.join(ckpt_path, 'final_model.h5'))
+    model.fit(train_dataset,
+              steps_per_epoch=epoch_steps,
+              epochs=epochs // 5 * 3,
+              callbacks=eval_callback + lr_callback
+              )
 
 
-
-
-    seed = 0
-    np.random.seed(seed)
-
-    tf.random.set_seed(seed)
-
-
-
-
-
-    #custom_objects={'PreprocessInput': PreprocessInput, 'RouteGroup': RouteGroup(ngroups=2, group_id=1)}
-
-    # config = hls4ml.utils.config_from_keras_model(model, granularity='model', backend='Vitis')
-    # print("-----------------------------------")
-    # print("Configuration")
-    # plotting.print_dict(config)
-    # print("-----------------------------------")
-    # # hls_model = hls4ml.converters.convert_from_keras_model(
-    # #     model, hls_config=config, backend='Vitis', output_dir='model_1/hls4ml_prj', part='xcu250-figd2104-2L-e'
-    # # )
-
-
-    # hls4ml.utils.plot_model(hls_model, show_shapes=True, show_precision=True, to_file="model.png")
 if __name__ == "__main__":
     app.run(main)

@@ -84,7 +84,7 @@ def YOLOv4_Tiny(cfg,
     else:
         x = inputs = tf.keras.Input([input_size, input_size, 3])
 
-    #x = tf.divide(x, 255.)
+    x = PreprocessInput()(x)
 
     x = tf.keras.layers.ZeroPadding2D(((1, 0), (1, 0)))(x)
     x = DarknetConv2D_BN_Leaky(32, (3, 3), strides=(2, 2))(x)  # 0

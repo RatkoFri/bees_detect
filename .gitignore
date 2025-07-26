@@ -2,3 +2,6 @@ ckpts/tmp
 __pycache__/
 .DS_Store
 .DS_Store
+backup/
+*code-workspace
+*.out

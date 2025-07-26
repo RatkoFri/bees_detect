@@ -59,7 +59,7 @@ def YOLOv3_Tiny(cfg,
     else:
         x = inputs = tf.keras.Input([input_size, input_size, 3])
 
-    #x = PreprocessInput()(x)
+    x = PreprocessInput()(x)
 
     x = DarknetConv2D_BN_Leaky(16, 3)(x)
     x = tf.keras.layers.MaxPool2D(2, 2, "same")(x)
